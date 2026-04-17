@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { PortableText } from "@portabletext/react";
 import type { PortableTextComponents } from "@portabletext/react";
 import imageUrlBuilder from "@sanity/image-url";
-import { client } from "../lib/sanityClient.js";
+import { client } from "../lib/sanityClient";
 import type { SanityPost } from "../types";
 import Header from "../components/Header";
 import Sponsors from "../components/Sponsors";
