@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { PortableText } from "@portabletext/react";
+import type { PortableTextComponents } from "@portabletext/react";
+import imageUrlBuilder from "@sanity/image-url";
+import { client } from "../lib/sanityClient.js";
 import type { SanityPost } from "../types";
 import Header from "../components/Header";
 import Sponsors from "../components/Sponsors";
@@ -8,114 +12,51 @@ import { fetchPostBySlug } from "../lib/queries";
 
 const PLACEHOLDER = "https://placehold.co/1200x630?text=Article";
 
-// ---------------------------------------------------------------------------
-// Lightweight Portable Text renderer — handles the common Sanity block types
-// without requiring an extra dependency.
-// ---------------------------------------------------------------------------
-type PTSpan = { _type: "span"; text: string; marks?: string[] };
-type PTBlock = {
-    _type: "block";
-    style?: string;
-    listItem?: string;
-    children?: PTSpan[];
-    markDefs?: { _key: string; _type: string; href?: string }[];
-};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PTNode = PTBlock | { _type: string; [key: string]: any };
+const builder = imageUrlBuilder(client);
 
-function renderSpan(
-    span: PTSpan,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    markDefs: { _key: string; _type: string; href?: string }[],
-    key: number
-): React.ReactNode {
-    const { text, marks = [] } = span;
-    let node: React.ReactNode = text;
-
-    for (const mark of marks) {
-        const def = markDefs.find((d) => d._key === mark);
-        if (def?.href) {
-            node = (
-                <a key={key} href={def.href} target="_blank" rel="noopener noreferrer" className="text-red-600 underline hover:text-red-800">
-                    {node}
-                </a>
-            );
-        } else if (mark === "strong") {
-            node = <strong key={key}>{node}</strong>;
-        } else if (mark === "em") {
-            node = <em key={key}>{node}</em>;
-        } else if (mark === "underline") {
-            node = <u key={key}>{node}</u>;
-        } else if (mark === "code") {
-            node = <code key={key} className="bg-gray-100 px-1 rounded text-sm font-mono">{node}</code>;
-        }
-    }
-    return node;
-}
-
-function renderBlock(block: PTBlock, index: number): React.ReactNode {
-    const children = (block.children ?? []).map((span, i) =>
-        renderSpan(span, block.markDefs ?? [], i)
-    );
-
-    const style = block.style ?? "normal";
-
-    if (block.listItem === "bullet") {
-        return <li key={index} className="ml-6 list-disc">{children}</li>;
-    }
-    if (block.listItem === "number") {
-        return <li key={index} className="ml-6 list-decimal">{children}</li>;
-    }
-
-    switch (style) {
-        case "h1": return <h1 key={index} className="text-4xl font-bold mt-8 mb-3">{children}</h1>;
-        case "h2": return <h2 key={index} className="text-3xl font-bold mt-7 mb-3">{children}</h2>;
-        case "h3": return <h3 key={index} className="text-2xl font-semibold mt-6 mb-2">{children}</h3>;
-        case "h4": return <h4 key={index} className="text-xl font-semibold mt-5 mb-2">{children}</h4>;
-        case "blockquote":
+const portableTextComponents: PortableTextComponents = {
+    types: {
+        image: ({ value }) => {
+            if (!value?.asset) return null;
+            const url = builder.image(value).width(900).auto("format").url();
             return (
-                <blockquote key={index} className="border-l-4 border-red-500 pl-4 italic text-gray-600 my-4">
-                    {children}
-                </blockquote>
+                <figure className="my-6">
+                    <img
+                        src={url}
+                        alt={value.alt ?? ""}
+                        className="w-full rounded-lg object-cover"
+                    />
+                    {value.caption && (
+                        <figcaption className="text-center text-sm text-gray-500 mt-2 italic">
+                            {value.caption}
+                        </figcaption>
+                    )}
+                </figure>
             );
-        default:
-            return <p key={index} className="my-3 leading-relaxed">{children}</p>;
-    }
-}
-
-// Wrap consecutive list items in <ul> / <ol>
-function groupBlocks(nodes: PTNode[]): React.ReactNode[] {
-    const result: React.ReactNode[] = [];
-    let i = 0;
-    while (i < nodes.length) {
-        const node = nodes[i] as PTBlock;
-        if (node._type === "block" && node.listItem) {
-            const tag = node.listItem === "number" ? "number" : "bullet";
-            const items: React.ReactNode[] = [];
-            while (i < nodes.length) {
-                const cur = nodes[i] as PTBlock;
-                if (cur._type === "block" && cur.listItem === tag) {
-                    items.push(renderBlock(cur, i));
-                    i++;
-                } else break;
-            }
-            result.push(
-                tag === "number"
-                    ? <ol key={`list-${i}`} className="list-decimal my-4 space-y-1">{items}</ol>
-                    : <ul key={`list-${i}`} className="list-disc my-4 space-y-1">{items}</ul>
-            );
-        } else if (node._type === "block") {
-            result.push(renderBlock(node, i));
-            i++;
-        } else {
-            // Unknown block types (images embedded in body, etc.) — skip silently
-            i++;
-        }
-    }
-    return result;
-}
-
-// ---------------------------------------------------------------------------
+        },
+    },
+    marks: {
+        link: ({ children, value }) => (
+            <a href={value?.href} target="_blank" rel="noopener noreferrer" className="text-red-600 underline hover:text-red-800">
+                {children}
+            </a>
+        ),
+    },
+    block: {
+        h1: ({ children }) => <h1 className="text-4xl font-bold mt-8 mb-3">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-3xl font-bold mt-7 mb-3">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-2xl font-semibold mt-6 mb-2">{children}</h3>,
+        h4: ({ children }) => <h4 className="text-xl font-semibold mt-5 mb-2">{children}</h4>,
+        blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-red-500 pl-4 italic text-gray-600 my-4">{children}</blockquote>
+        ),
+        normal: ({ children }) => <p className="my-3 leading-relaxed">{children}</p>,
+    },
+    list: {
+        bullet: ({ children }) => <ul className="list-disc ml-6 my-4 space-y-1">{children}</ul>,
+        number: ({ children }) => <ol className="list-decimal ml-6 my-4 space-y-1">{children}</ol>,
+    },
+};
 
 const CATEGORY_ROUTES: Record<string, string> = {
     "Dirt Late Models": "/DLM",
@@ -152,10 +93,10 @@ export default function ArticlePage() {
 
     const formattedDate = post?.publishedAt
         ? new Date(post.publishedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-          })
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        })
         : null;
 
     return (
@@ -217,7 +158,7 @@ export default function ArticlePage() {
                         {/* Body */}
                         {post.body && post.body.length > 0 ? (
                             <article className="prose prose-gray max-w-none text-gray-800 text-base">
-                                {groupBlocks(post.body)}
+                                <PortableText value={post.body} components={portableTextComponents} />
                             </article>
                         ) : (
                             <p className="text-gray-400 italic">No content available for this article.</p>
