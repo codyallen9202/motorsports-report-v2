@@ -21,7 +21,7 @@ export default function FeaturedArticle({ post }: { post: SanityPost | null }) {
                         <img
                             src={img}
                             alt={post.title}
-                            className="w-full aspect-[16/9] object-cover"
+                            className="w-full aspect-[3/2] object-cover"
                             loading="eager"
                         />
                         {/* category badge */}

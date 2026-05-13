@@ -152,7 +152,7 @@ export default function ArticlePage() {
                         <img
                             src={post.mainImage?.asset?.url ?? PLACEHOLDER}
                             alt={post.title ?? "Article image"}
-                            className="w-full rounded-xl object-cover aspect-[16/9] mb-8"
+                            className="w-full rounded-xl object-cover aspect-[3/2] mb-8"
                         />
 
                         {/* Body */}

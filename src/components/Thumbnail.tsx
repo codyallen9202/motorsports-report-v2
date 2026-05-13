@@ -11,7 +11,7 @@ export default function Thumbnail({ title, author, image, href, date }: Thumbnai
                 <img
                     src={image}
                     alt={title}
-                    className="w-full aspect-[16/9] object-cover rounded-md mb-3 group-hover:opacity-90"
+                    className="w-full aspect-[3/2] object-cover rounded-md mb-3 group-hover:opacity-90"
                     loading="lazy"
                 />
                 <h3 className="text-lg font-semibold group-hover:text-red-500 transition-colors line-clamp-2">
