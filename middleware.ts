@@ -20,7 +20,7 @@ const PROJECT_ID = process.env.VITE_SANITY_PROJECT_ID;
 const DATASET = process.env.VITE_SANITY_DATASET;
 const API_VERSION = "2025-01-01";
 
-const SITE_URL = "https://motorsportsreport.net";
+const SITE_URL = "https://www.motorsportsreport.net";
 const SITE_NAME = "Motorsports Report";
 const DEFAULT_DESCRIPTION =
   "Motorsports Report brings you news, results, and photos from Dirt Late Model, Dirt Sprint Car, and NASCAR racing.";
